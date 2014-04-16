@@ -1,4 +1,4 @@
 Varios
 ======
 
-Codigos C++ de varios proyectos
+Codigos de varios proyectos
