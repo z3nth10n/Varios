@@ -8,8 +8,12 @@ using namespace std;
 
 #define CHARS_NUM 2
 
-void coutIt(char* str, size_t n){
+void coutIt(char* str, int n){
     static size_t line=2;
+    if(n==-1){
+        cout << endl << line++ << "  ";
+        return;
+    }
     bool contains=false;
     int i=0, t=0;
     while(i<n){
@@ -39,7 +43,7 @@ int main(int args, char** argc){
             file.read(chars,CHARS_NUM);
             coutIt(chars,file.gcount());
         }
-        cout << endl;
+        coutIt(0,-1);
     }
     cout << "Terminado!" << endl;
     this_thread::sleep_for(chrono::seconds(2));
