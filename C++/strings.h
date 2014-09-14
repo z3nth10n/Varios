@@ -118,13 +118,25 @@ std::string tolower(std::string s){
     return s;
 }
 
-std::string trim(std::string s,char c=' '){
+std::string trim(std::string s, char c=' '){
     int i=0;
     while(i<s.size() && s[i]==c)
         ++i;
     s.erase(0,i);
     i = s.size()-1;
     while(i>=0 && s[i]==c)
+        --i;
+    s.erase(i+1,s.size());
+    return s;
+}
+
+std::string trim(std::string s, const std::string& chars){
+    int i=0;
+    while(i<s.size() && chars.find(s[i])!=chars.npos)
+        ++i;
+    s.erase(0,i);
+    i = s.size()-1;
+    while(i>=0 && chars.find(s[i])!=chars.npos)
         --i;
     s.erase(i+1,s.size());
     return s;
@@ -149,6 +161,8 @@ bool isHex(std::string num){
 }
 
 std::string toHex(int a){
+    bool signo = a<0;
+    if(signo) a*=-1;
     std::string t;
     while(a>0){
         if(a%16>=0 && a%16<=9)
@@ -156,6 +170,27 @@ std::string toHex(int a){
         else t = (char)((a%16)+55) + t;
         a=a/16;
     }
+    if(signo) t = '-'+t;
+    return t;
+}
+
+int hexToDec(std::string h){
+    if(h.size()==0 || !isHex(h)) return 0;
+    int t = 0;
+    bool signo = h[0]=='-';
+    int i=0;
+    if(signo)
+        i=1;
+    for(;i<h.size(); i++){
+        if(h[i]>='a' && h[i]<='f')
+            t += (h[i]-'a'+10)*pow(16,h.size()-i-1);
+        else if(h[i]>='A' && h[i]<='F')
+            t += (h[i]-'A'+10)*pow(16,h.size()-i-1);
+        else
+            t += (h[i]-'0')*pow(16,h.size()-i-1);
+    }
+    if(signo)
+        t*=-1;
     return t;
 }
 
