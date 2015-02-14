@@ -1,4 +1,5 @@
 #include "ivancea.h"
+#include "timers.h"
 
 void tetris(int velocity=200){
     note(4, LA, velocity*2);
@@ -37,7 +38,7 @@ void tetris(int velocity=200){
 
     note(5, RE, velocity*1);
     note(5, RE, velocity*1);
-    note(4, DO, velocity*1);
+    note(5, DO, velocity*1);
     note(4, LA_S, velocity*1);
 
     note(4, LA, velocity*3);

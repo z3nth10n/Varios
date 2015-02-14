@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <fstream>
 
 std::string cesar(std::string temp, int b){
     if(b<0 || b>25) return temp;
@@ -35,7 +36,7 @@ int contains(std::string contenedor, std::string cadena){
     return temp;
 }
 
-std::vector<std::string> split(std::string inicial, std::string busqueda = " ", int maxc = -1){
+std::vector<std::string> split(std::string inicial, std::string busqueda, int maxc = -1){
     std::vector<std::string> temp;
     if(maxc==-1) maxc=inicial.size();
     if(inicial==""||busqueda==""||maxc<2){
@@ -192,6 +193,19 @@ int hexToDec(std::string h){
     if(signo)
         t*=-1;
     return t;
+}
+
+int readCSV(std::vector<std::string>& v, std::string filename){
+    std::ifstream file(filename);
+    if(!file) return -1;
+    int contador=0;
+    std::string t;
+    while(file){
+        getline(file,t,',');
+        ++contador;
+        v.push_back(t);
+    }
+    return contador;
 }
 
 #endif // STRINGS_H

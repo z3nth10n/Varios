@@ -31,4 +31,15 @@ template<class T>std::thread* callbackAfter(uint32_t ms, void (*f)(T), T param){
     return new std::thread([](uint32_t time, void (*func)(T), T p){thSleep(time);(*func)(p);},ms,f,param);
 }
 
+class autoChrono{
+    uint32_t* _v;
+    clock_t _time;
+
+public:
+    autoChrono(uint32_t* var_ms):_v(var_ms),_time(clock()){}
+    ~autoChrono(){
+        *_v = (clock()-_time)*1000/CLOCKS_PER_SEC;
+    }
+};
+
 #endif // TIMERS_H
