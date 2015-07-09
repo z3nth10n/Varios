@@ -1,8 +1,9 @@
 #ifndef UDP_H
 #define UDP_H
 
-#include <cstring>
+#include <string>
 #include <windows.h>
+#include <ws2tcpip.h>
 
 struct UDP__WSA{
     UDP__WSA(){
@@ -30,6 +31,25 @@ bool validIp(std::string ip){
     return true;
 }
 
+unsigned int resolveAddress(std::string addr){
+    if(addr=="255.255.255.255")
+        return INADDR_BROADCAST;
+    unsigned int ip=0;
+    if((ip=inet_addr(addr.c_str()))!=INADDR_NONE)
+        return ip;
+    addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    addrinfo* result = NULL;
+    if (getaddrinfo(addr.c_str(), NULL, &hints, &result) == 0)
+        if (result){
+            ip = ((sockaddr_in*)result->ai_addr)->sin_addr.s_addr;
+            freeaddrinfo(result);
+            return ip;
+        }
+    return 0;
+}
+
 int UDPSend(std::string ip, unsigned short port, std::string msg){
     if(!validIp(ip)) return 1;
     int iResult;
@@ -44,7 +64,9 @@ int UDPSend(std::string ip, unsigned short port, std::string msg){
     }
     RecvAddr.sin_family = AF_INET;
     RecvAddr.sin_port = htons(port);
-    RecvAddr.sin_addr.s_addr = inet_addr(ip.c_str());
+    RecvAddr.sin_addr.s_addr = resolveAddress(ip.c_str());
+    if(RecvAddr.sin_addr.s_addr == 0)
+        return false;
     iResult = sendto(SendSocket, msg.c_str(), msg.size(), 0, (SOCKADDR *) &RecvAddr, sizeof (RecvAddr));
     if(iResult == SOCKET_ERROR){
         closesocket(SendSocket);
@@ -60,10 +82,9 @@ int UDPSend(std::string ip, unsigned short port, std::string msg){
     return 0;
 }
 
-std::string UDPRecv(int port, bool blocking=false, size_t maxSize=1024){
-    std::string msg;
-    if(maxSize==0){
-        return msg;
+bool UDPRecv(std::string *msg, std::string *ip, int port, bool blocking=false, size_t maxSize=1024){
+    if(maxSize==0 || (msg==nullptr && ip==nullptr)){
+        return false;
     }
 
     SOCKET RecvSocket;
@@ -77,51 +98,35 @@ std::string UDPRecv(int port, bool blocking=false, size_t maxSize=1024){
 
     RecvSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(RecvSocket == INVALID_SOCKET){
-        return msg;
+        return false;
     }
     RecvAddr.sin_family = AF_INET;
     RecvAddr.sin_port = htons(port);
     RecvAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if(bind(RecvSocket, (SOCKADDR *) & RecvAddr, sizeof (RecvAddr)) != 0){
-        return msg;
+        return false;
     }
 
     if(!blocking){
         DWORD nonBlocking = 1;
         if(ioctlsocket(RecvSocket,FIONBIO,&nonBlocking )!=0){
-            return msg;
+            return false;
         }
     }
 
     if((BufLen=recvfrom(RecvSocket, RecvBuf, BufLen, 0, (SOCKADDR*)&SenderAddr, &SenderAddrSize))==SOCKET_ERROR){
-        return msg;
+        return false;
     }
 
     closesocket(RecvSocket);
 
-    msg = inet_ntoa(SenderAddr.sin_addr);
-    msg+='-';
-    for(int i=0; i<BufLen; i++)
-        msg += RecvBuf[i];
+    if(ip!=nullptr)
+        *ip = inet_ntoa(SenderAddr.sin_addr);
+    if(msg!=nullptr)
+        *msg = std::string(RecvBuf,BufLen);
 
-    return msg;
-}
-
-std::string popIp(std::string& msg){
-    std::string ip;
-    if(msg.size()<8) return ip;
-    int i=7;
-    for(; i<=16 && i<msg.size(); i++)
-        if(msg[i]=='-')
-            break;
-        else if(i==msg.size()-1) return ip;
-
-    if(!validIp(msg.substr(0,i))) return ip;
-
-    ip = msg.substr(0,i);
-    msg.erase(0,i+1);
-    return ip;
+    return true;
 }
 
 #endif // UDP_H
