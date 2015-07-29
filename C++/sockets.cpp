@@ -350,6 +350,22 @@ Connection TCPRawServer::newClient(){
     return t;
 }
 
+bool TCPRawServer::newClient(TCPSocketCallback* callback, bool detach){
+    Connection t;
+    if(!_on) return false;
+
+    SOCKADDR_IN clientInfo = {0};
+    int addrsize = sizeof(clientInfo);
+    if((t.sock=accept(_listener, (sockaddr*)&clientInfo, &addrsize))==INVALID_SOCKET)
+        return false;
+
+    t.ip = inet_ntoa(clientInfo.sin_addr);
+    thread th(callback, t);
+    if(detach)
+        th.detach();
+    return true;
+}
+
 bool TCPRawServer::isOn()const{
     return _on;
 }
