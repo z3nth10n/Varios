@@ -110,6 +110,18 @@ bool TCPClient::connect(string ip, unsigned short port){
     return true;
 }
 
+void TCPClient::connect(SOCKET sock, string ip, unsigned short port){
+
+    disconnect();
+
+    _ip = ip;
+    _port = port;
+    _socket = sock;
+    _connected=true;
+    setBlocking(false);
+    _blocking = false;
+}
+
 void TCPClient::disconnect(){
     if(!_connected) return;
     closesocket(_socket);
@@ -136,7 +148,11 @@ string TCPClient::recv(int maxChars){
 
 bool TCPClient::send(const string& msg){
     if(!_connected) return false;
-    return ::send(_socket, msg);
+    int n = ::send(_socket, msg);
+    if(n == SOCKET_ERROR)
+        if(WSAGetLastError() == WSAENOTCONN)
+            disconnect();
+    return n;
 }
 
 bool TCPClient::isConnected()const{
@@ -190,7 +206,7 @@ bool TCPServer::newClient(){
 
     _client c;
 
-    connection t;
+    Connection t;
     if((t = TCPRawServer::newClient()).sock==INVALID_SOCKET)
         return false;
 
@@ -321,8 +337,8 @@ void TCPRawServer::finish(){
     _on=false;
 }
 
-connection TCPRawServer::newClient(){
-    connection t;
+Connection TCPRawServer::newClient(){
+    Connection t;
     if(!_on) return t;
 
     SOCKADDR_IN clientInfo = {0};
