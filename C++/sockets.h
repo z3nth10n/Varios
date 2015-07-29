@@ -3,15 +3,16 @@
 
 #include <string>
 #include <vector>
+#include <winsock2.h>
 #include <windows.h>
 
 using namespace std;
 
-struct connection{
+struct Connection{
     SOCKET sock;
     string ip;
 
-    connection():sock(INVALID_SOCKET){}
+    Connection():sock(INVALID_SOCKET){}
 };
 
 string recv(SOCKET s, size_t maxChars=1024);
@@ -32,7 +33,7 @@ public:
     ~TCPRawServer();
     bool start(unsigned short port);
     void finish();
-    connection newClient();
+    Connection newClient();
     bool isOn()const;
     unsigned short getPort()const;
     void setBlocking(bool blocking);
@@ -78,6 +79,7 @@ public:
     TCPClient(string ip, unsigned short port);
     ~TCPClient();
     bool connect(string ip, unsigned short port);
+    void connect(SOCKET sock, string ip, unsigned short port);
     void disconnect();
     string recv(int maxChars=1024);
     bool send(const string& msg);
