@@ -15,6 +15,8 @@ struct Connection{
     Connection():sock(INVALID_SOCKET){}
 };
 
+typedef void(TCPSocketCallback)(Connection c);
+
 string recv(SOCKET s, size_t maxChars=1024);
 
 bool send(SOCKET s, string msg);
@@ -34,6 +36,7 @@ public:
     bool start(unsigned short port);
     void finish();
     Connection newClient();
+    bool newClient(TCPSocketCallback* callback, bool detach = true);
     bool isOn()const;
     unsigned short getPort()const;
     void setBlocking(bool blocking);
