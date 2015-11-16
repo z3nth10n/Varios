@@ -2,8 +2,6 @@ format PE GUI 4.0
 
 include 'ivancea.inc'
 
-.data
-    problem db "Smallest number evenly divisible by numbers 1 to 20",0
 .code
     main:
         call icf_init
