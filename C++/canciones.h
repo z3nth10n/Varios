@@ -1,5 +1,33 @@
-#include "ivancea.h"
-#include "timers.h"
+#include <windows.h>
+#include <cmath>
+
+
+inline void thSleep(int ms){
+    Sleep(ms);
+}
+
+enum notas{
+    DO=1,
+    DO_S=2,
+    RE,
+    RE_S,
+    MI,
+    FA,
+    FA_S,
+    SOL,
+    SOL_S,
+    LA,
+    LA_S,
+    SI
+};
+
+void note(int octava, int nota, int ms){
+    if(octava<=0 || nota<0 ||ms<=0) return;
+    double oct = octava, no = nota;
+    double n = 440.0 * exp(((oct-4)+(no-10)/12)*log(2));
+    if(n<37 || n>32767) return;
+    Beep(n, ms);
+}
 
 void tetris(int velocity=200){
     note(4, LA, velocity*2);
