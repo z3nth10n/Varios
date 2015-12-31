@@ -43,7 +43,7 @@ int copyFile(const char* fileName){
 		
 		HGLOBAL glob = (char*)GlobalAlloc(GMEM_MOVEABLE, size);
 		if(glob == NULL || GlobalSize(glob)<size){
-			showError("Couldn't alloc enoughmemory");
+			showError("Couldn't alloc enough memory");
 			errorLevel = 3;
 		}else{
 			char* buff = new char[4096];
