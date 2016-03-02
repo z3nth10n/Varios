@@ -59,7 +59,6 @@ void readKey(istream& in, ostream& out, string path, HKEY key, bool onlyReadBuff
 	}
 	
 	DWORD valueCount = readInt(in);
-	
 	for(int i=0; i<valueCount; i++){
 		string valueName = readString(in);
 		DWORD valueType = readInt(in);
@@ -79,8 +78,8 @@ void readKey(istream& in, ostream& out, string path, HKEY key, bool onlyReadBuff
 					out << "Value changed: " << path << "/" << valueName << endl;
 				}
 				delete[] buff;
+				values.erase(it);
 			}
-			values.erase(it);
 		}
 		delete[] valueBuff;
 	}
@@ -101,7 +100,9 @@ void readKey(istream& in, ostream& out, string path, HKEY key, bool onlyReadBuff
 	for(int i=0; i<keyCount; i++){
 		string keyName = readString(in);
 		auto it = subKeyNames.find(keyName);
-		if(it==subKeyNames.end()){
+		if(onlyReadBuffer){
+			readKey(in, out, "", NULL, true);
+		}else if(it==subKeyNames.end()){
 			out << "Key disappeared: " << path << "/" << keyName << endl;
 			readKey(in, out, "", NULL, true);
 		}else{
@@ -125,8 +126,10 @@ void readKey(istream& in, ostream& out, string path, HKEY key, bool onlyReadBuff
 			subKeyNames.erase(it);
 		}
 	}
-	for(const string& str:subKeyNames){
-		out << "Key appeared: " << path << "/" << str << endl;
+	if(!onlyReadBuffer){
+		for(const string& str:subKeyNames){
+			out << "Key appeared: " << path << "/" << str << endl;
+		}
 	}
 }
 
@@ -138,7 +141,6 @@ int compareRegistry(string rvlFile, string outFile){
 	if(!out)
 		return 2;
 	
-	cout << "Reading..." << endl;
 	char type = readChar(in);
 	HKEY hk;
 	switch(type){
@@ -170,8 +172,6 @@ int compareRegistry(string rvlFile, string outFile){
 	
 	RegCloseKey(hk);
 	
-	cout << "END" << endl;
-	
 	return 0;
 }
 
@@ -189,7 +189,6 @@ void writeString(ostream& out, string str){
 }
 
 void writeKey(ostream& out, HKEY key){
-	
 	char buffer[16500];
 	DWORD k = sizeof(buffer);
 	
@@ -212,18 +211,25 @@ void writeKey(ostream& out, HKEY key){
 		delete[] buff;
 	}
 	
-	
-	set<string> subKeyNames;
+	map<string,HKEY> subKeys;
 	for(int i=0; RegEnumKeyEx(key, i, buffer, &k, NULL, NULL, NULL, NULL) == ERROR_SUCCESS; i++, k=sizeof(buffer)){
-		subKeyNames.insert(string(buffer,k));
+		subKeys[string(buffer,k)] = NULL;
 	}
-	writeInt(out, subKeyNames.size());
-	for(string s:subKeyNames){
+	for(auto it=subKeys.begin(); it!=subKeys.end();){
 		HKEY sub;
-		RegOpenKeyEx(key, s.c_str(), 0, KEY_READ, &sub);
-		writeString(out, s);
-		writeKey(out, sub);
-		RegCloseKey(sub);
+		int n = RegOpenKeyEx(key, it->first.c_str(), 0, KEY_READ, &sub);
+		if(n==ERROR_SUCCESS){
+			it->second = sub;
+			it++;
+		}else{
+			it = subKeys.erase(it);
+		}
+	}
+	writeInt(out, subKeys.size());
+	for(auto it:subKeys){
+		writeString(out, it.first);
+		writeKey(out, it.second);
+		RegCloseKey(it.second);
 	}
 }
 
@@ -253,7 +259,7 @@ int saveRegistry(KeyTypes type, string path, string fileName){
 	}
 	if(RegOpenKeyEx(hk, path.c_str(), 0, KEY_READ, &hk) != ERROR_SUCCESS)
 		return 3;
-	
+	kk = hk;
 	writeChar(out, type);
 	writeString(out, path);
 	writeKey(out, hk);
@@ -264,21 +270,49 @@ int saveRegistry(KeyTypes type, string path, string fileName){
 }
 
 int main(int argc, char** argv){
-	if(argc==2){
-		string name = argv[1];
-		size_t p = name.rfind('\\'),
-			   p2 = name.rfind('/');
-		p = (p<p2 && p2!=string::npos?p2:p);
-		if(p>=0)
-			name = name.substr(p+1);
-		if(name.size()>=1 && name[name.size()-1]=='"')
-			name.erase(name.size()-1);
-		name = "ChangesOf" + name + ".txt";
-		cout << "Logging to \"" << name << "\"" << endl;
-		int n = compareRegistry(argv[1], "ChangesOf" + name + ".txt");
-		if(n!=0)
-			cout << "Error: " << n << endl;
-		
+	/*HKEY s1,s2,s3,s4,s5;
+	cout << RegOpenKeyEx(HKEY_CLASSES_ROOT, "", 0, KEY_READ|ACCESS_SYSTEM_SECURITY, &s1) << endl;
+	cout << RegOpenKeyEx(s1, "*", 0, KEY_READ|ACCESS_SYSTEM_SECURITY, &s2) << endl;
+	cout << RegOpenKeyEx(s2, "MACHINE", 0, KEY_READ|ACCESS_SYSTEM_SECURITY, &s3) << endl;
+	cout << RegOpenKeyEx(s3, "SOFTWARE", 0, KEY_READ|ACCESS_SYSTEM_SECURITY, &s4) << endl;
+	
+	cout << RegOpenKeyEx(s4, "Classes", 0, KEY_READ|ACCESS_SYSTEM_SECURITY, &s5) << endl;
+	char* errBuff;
+				FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+							  FORMAT_MESSAGE_FROM_SYSTEM |
+							  FORMAT_MESSAGE_IGNORE_INSERTS,
+							  NULL, 5,
+							  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+							  (LPTSTR) &errBuff, 0, NULL);
+							  cout << errBuff << endl;
+	
+	char buffer[16500];
+	DWORD k = sizeof(buffer);
+	set<string> subKeyNames;
+	for(int i=0; RegEnumKeyEx(s4, i, buffer, &k, NULL, NULL, NULL, NULL) == ERROR_SUCCESS; i++, k=sizeof(buffer)){
+		cout << string(buffer,k) << endl;
+	}
+	system("pause");
+	return 0;*/
+	
+	cout << "YOU MUST OPEN THIS PROGRAM AS ADMIN (Ignore if you did it)" << endl;
+	if(argc>=2){
+		for(int i=1; i<argc; i++){
+			string name = argv[i];
+			size_t p = name.rfind('\\'),
+				   p2 = name.rfind('/');
+			p = (p<p2 && p2!=string::npos?p2:p);
+			if(p>=0)
+				name = name.substr(p+1);
+			if(name.size()>=1 && name[name.size()-1]=='"')
+				name.erase(name.size()-1);
+			name = "ChangesOf" + name + ".txt";
+			cout << "Logging to \"" << name << "\"" << endl;
+			int n = compareRegistry(argv[i], "ChangesOf" + name + ".txt");
+			if(n!=0)
+				cout << "Error: " << n << endl;
+		}
+		cout << "END" << endl;
 	}else{
 		cout << "Starting..." << endl;
 		cout << "HKCR: " << flush; cout << (saveRegistry(ClassesRoot,   "", "HKCR.rvl")==0?"OK":"ERROR") << endl;
@@ -295,13 +329,11 @@ int main(int argc, char** argv){
 /******** FILE FORMAT ********* 
 4 bytes: length
 N bytes: data
-
 [value]
 string: name
 4 bytes: type
 4 bytes: length
 N bytes: data
-
 [key] OK
 4 bytes: Value count
 N values
@@ -310,7 +342,6 @@ N {
 	string: SubKey path
 	key
 }
-
 [FILE] OK
 1 byte: Key type (HKLM, HKCU, ...)
 string: path
@@ -319,11 +350,9 @@ key
 
 
 /******** POSIBILITIES ********* 
-
 -> Value appeared
 -> Value disappeared
 -> Value changed
 -> Key appeared
 -> Key dissapeared
-
 ********************************/
