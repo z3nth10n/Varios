@@ -1,0 +1,181 @@
+<html>
+<head>
+
+<style>
+
+    #container{
+        cursor:default;
+        
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    #container .move,div:not(.nomove){
+        cursor:move;
+    }
+
+    .chess, .chess tr, .chess tr td{
+        border: 1px solid black;
+        padding: 0px;
+        border-collapse: collapse;
+    }
+    .chess tr td{
+        width:64px;
+        height:64px;
+    }
+    .chess tr:nth-child(odd) td:nth-child(even){
+        background-color: #555555;
+    }
+    .chess tr:nth-child(even) td:nth-child(odd){
+        background-color: #555555;
+    }
+
+</style>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+
+var socket = io();
+
+function GET(id){
+    var a = new RegExp(id+"=([^&#=]*)");
+    a = a.exec(window.location.search);
+    if(a==null) return false;
+    return decodeURIComponent(a[1]);
+}
+
+function hasClass(item, className){
+    return (" "+item.class+" ").indexOf(" "+className+" ")!=-1;
+}
+var container = false;
+var focused = false;
+var zIndex = 1;
+var offTop=0;
+var offLeft=0;
+
+window.addEventListener("load", function(e){
+    container = document.getElementById("container");
+    
+    window.addEventListener("mouseup", mouseUpEvent);
+
+    var t = container.childNodes;
+    for(var i=0; i<t.length; i++){
+        if(t[i].nodeName == "#text" || hasClass(t[i],"nomove")
+        || (t[i].nodeName != "DIV" && !hasClass(t[i],"move")))
+            continue;
+        
+        t[i].addEventListener("mousedown", mouseDownEvent);
+        var x = t[i].offsetLeft;
+        var y = t[i].offsetTop;
+        t[i].style.position="absolute";
+        t[i].style.left = x;
+        t[i].style.top = y;
+    }
+    var not_href = container.classList.contains("disable_href");
+    var t2 = container.getElementsByTagName("*");
+    for(var j=0; j<t2.length; j++){
+        t2[j].unselectable=true;
+        t2[j].draggable = false;
+        t2[j].addEventListener("dragstart",function(e){return false;});
+        t2[j].addEventListener("click",function(e){return false;});
+        if(not_href && t2[j].nodeName == "A")
+            t2[j].href="#";
+    }
+    container.addEventListener("mousemove", mouseMoveEvent);
+	
+	socket.emit("getAllPieces", 0);
+});
+
+function mouseMoveEvent(e){
+    if(focused===false)
+        return;
+    var x = e.pageX-offLeft;
+    var y = e.pageY-offTop;
+    focused.style.left=x+"px";
+    focused.style.top=y+"px";
+}
+
+function mouseDownEvent(e){
+    focused = e.target;
+    while(focused.parentNode.id != "container"){
+        focused = focused.parentNode;
+        if(!focused || focused.tagName == "BODY"){
+            focused = false;
+            return;
+        }
+    }
+    offLeft = e.pageX-focused.offsetLeft;
+    offTop = e.pageY-focused.offsetTop;
+    focused.style.zIndex=zIndex++;
+}
+
+function mouseUpEvent(e){
+	socket.emit("movePiece", {id: focused.id.substring(1),
+	                          top:  focused.style.top,
+	                          left: focused.style.left});
+    focused=false;
+}
+
+socket.on("movePiece", function(e){
+	var element = document.getElementById("p"+e.id);
+	if(element!=null){
+		element.style.top = e.top;
+		element.style.left = e.left;
+	}
+});
+
+</script>
+
+</head>
+
+<body id="container" class="disable_href" style="float:left;width:100%;height:100%;">
+
+<div id="p0" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') 0px 0;width:64px; height:64px; "></div>
+<div id="p1" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') 0px -64px;width:64px; height:64px; "></div>
+<div id="p2" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -64px 0;width:64px; height:64px; "></div>
+<div id="p3" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -64px -64px;width:64px; height:64px; "></div>
+<div id="p4" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -128px 0;width:64px; height:64px; "></div>
+<div id="p5" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -128px -64px;width:64px; height:64px; "></div>
+<div id="p6" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -128px 0;width:64px; height:64px; "></div>
+<div id="p7" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -128px -64px;width:64px; height:64px; "></div>
+<div id="p8" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -192px 0;width:64px; height:64px; "></div>
+<div id="p9" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -192px -64px;width:64px; height:64px; "></div>
+<div id="p10" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -192px 0;width:64px; height:64px; "></div>
+<div id="p11" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -192px -64px;width:64px; height:64px; "></div>
+<div id="p12" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -256px 0;width:64px; height:64px; "></div>
+<div id="p13" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -256px -64px;width:64px; height:64px; "></div>
+<div id="p14" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -256px 0;width:64px; height:64px; "></div>
+<div id="p15" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -256px -64px;width:64px; height:64px; "></div>
+<div id="p16" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
+<div id="p17" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
+<div id="p18" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
+<div id="p19" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
+<div id="p20" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
+<div id="p21" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
+<div id="p22" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
+<div id="p23" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
+<div id="p24" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
+<div id="p25" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
+<div id="p26" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
+<div id="p27" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
+<div id="p28" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
+<div id="p29" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
+<div id="p30" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
+<div id="p31" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
+
+<table class="chess">
+    <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
+    <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
+    <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
+    <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
+    <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
+    <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
+    <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
+    <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
+</table>
+</body>
+</html>
