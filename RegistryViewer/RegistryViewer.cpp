@@ -259,7 +259,6 @@ int saveRegistry(KeyTypes type, string path, string fileName){
 	}
 	if(RegOpenKeyEx(hk, path.c_str(), 0, KEY_READ, &hk) != ERROR_SUCCESS)
 		return 3;
-	kk = hk;
 	writeChar(out, type);
 	writeString(out, path);
 	writeKey(out, hk);
