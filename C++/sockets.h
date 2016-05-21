@@ -23,6 +23,8 @@ bool send(SOCKET s, string msg);
 
 void setBlocking(SOCKET sock, bool blocking);
 
+Connection getNewClient(unsigned short port);
+
 class TCPRawServer{
     SOCKET _listener;
     unsigned short _port;
