@@ -54,6 +54,14 @@ void setBlocking(SOCKET sock, bool blocking){
     ioctlsocket(sock, FIONBIO, &block);
 }
 
+Connection getNewClient(unsigned short port){
+	TCPRawServer server;
+	if(!server.start(port))
+		return Connection();
+	server.setBlocking(true);
+	return server.newClient();
+}
+
 string getIp(SOCKET s){
     sockaddr sa;
     int n = sizeof(sa);
