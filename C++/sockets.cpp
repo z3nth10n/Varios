@@ -27,7 +27,7 @@ unsigned int resolveAddress(string addr){
 }
 
 string recv(SOCKET s, size_t maxChars){
-    if(!s==INVALID_SOCKET) return "";
+    if(s==INVALID_SOCKET) return "";
     char buff[maxChars];
     int n = recv(s,buff,maxChars,0);
     if(n<=0)
