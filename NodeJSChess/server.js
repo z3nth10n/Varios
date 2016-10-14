@@ -25,7 +25,8 @@ var io = require('socket.io').listen(app);
 
 io.on('connection', function(socket) {
     socket.on("movePiece", function(e){
-		if(typeof e.id == 'undefined' || typeof e.top == 'undefined' || typeof e.left == 'undefined')
+		if(typeof e.id == 'undefined' || typeof e.top == 'undefined' || typeof e.left == 'undefined'
+		|| isNaN(parseInt(e.id)) || parseInt(e.id) < 0 || parseInt(e.id) > pieces.length)
 			return;
 		if(e.top.substring(e.top.length-2) != "px" || e.left.substring(e.left.length-2) != "px" || parseInt(e.id)<0 || parseInt(e.id)>=32)
 			return;
@@ -40,8 +41,12 @@ io.on('connection', function(socket) {
 									  top: pieces[i].top,
 									  left: pieces[i].left});
 	});
+	socket.on("chatMessage", function(text){
+		console.log(socket.request.connection.remoteAddress + " >> " + text);
+		io.emit("chatMessage", text);
+	});
 	console.log("Client connected from: " + socket.request.connection.remoteAddress);
 });
 
-app.listen(8080);
+app.listen(80);
 console.log("Listening...");
