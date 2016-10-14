@@ -12,13 +12,13 @@ for(var i=0; i<32; i++)
 	pieces.push({top: "0px", left: "0px"});
 	
 var app = http.createServer(function(req, res) {
-	console.log("Client");
+	console.log(req.connection.remoteAddress + " requested the html.");
     res.writeHead(200, {'Content-Type': 'text/html'});
     res.end(index);
 });
 
 app.on('error', function (e) {
-  console.log("Error: " + e.code);
+	console.log("Error: " + e.code);
 });
 
 var io = require('socket.io').listen(app);
@@ -45,7 +45,7 @@ io.on('connection', function(socket) {
 		console.log(socket.request.connection.remoteAddress + " >> " + text);
 		io.emit("chatMessage", text);
 	});
-	console.log("Client connected from: " + socket.request.connection.remoteAddress);
+	console.log("New WebSocket client: " + socket.request.connection.remoteAddress);
 });
 
 app.listen(80);
