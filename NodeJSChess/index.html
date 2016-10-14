@@ -124,9 +124,154 @@ socket.on("movePiece", function(e){
 	var element = document.getElementById("p"+e.id);
 	if(element!=null){
 		element.style.top = e.top;
+<html>
+<head>
+
+<style>
+	#chatMessages{
+		height: 20%;
+	}
+
+    #container{
+        cursor:default;
+        
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    #container .move,div:not(.nomove){
+        cursor:move;
+    }
+    .chess, .chess tr, .chess tr td{
+        border: 1px solid black;
+        padding: 0px;
+        border-collapse: collapse;
+    }
+    .chess tr td{
+        width:64px;
+        height:64px;
+    }
+    .chess tr:nth-child(odd) td:nth-child(even){
+        background-color: #555555;
+    }
+    .chess tr:nth-child(even) td:nth-child(odd){
+        background-color: #555555;
+    }
+</style>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+var socket = io();
+function GET(id){
+    var a = new RegExp(id+"=([^&#=]*)");
+    a = a.exec(window.location.search);
+    if(a==null) return false;
+    return decodeURIComponent(a[1]);
+}
+function hasClass(item, className){
+    return (" "+item.className+" ").indexOf(" "+className+" ")!=-1;
+}
+var container = false;
+var focused = false;
+var zIndex = 1;
+var offTop=0;
+var offLeft=0;
+
+window.addEventListener("load", function(e){
+    container = document.getElementById("container");
+    
+    window.addEventListener("mouseup", mouseUpEvent);
+    var t = container.childNodes;
+    for(var i=0; i<t.length; i++){
+        if(t[i].nodeName == "#text" || hasClass(t[i],"nomove")
+        || (t[i].nodeName != "DIV" && !hasClass(t[i],"move")))
+            continue;
+        
+        t[i].addEventListener("mousedown", mouseDownEvent);
+        var x = t[i].offsetLeft;
+        var y = t[i].offsetTop;
+        t[i].style.position="absolute";
+        t[i].style.left = x;
+        t[i].style.top = y;
+    }
+    var not_href = container.classList.contains("disable_href");
+    var t2 = container.getElementsByTagName("*");
+    for(var j=0; j<t2.length; j++){
+        t2[j].unselectable=true;
+        t2[j].draggable = false;
+        t2[j].addEventListener("dragstart",function(e){return false;});
+        t2[j].addEventListener("click",function(e){return false;});
+        if(not_href && t2[j].nodeName == "A")
+            t2[j].href="#";
+    }
+    container.addEventListener("mousemove", mouseMoveEvent);
+	
+	socket.emit("getAllPieces", 0);
+	
+	document.getElementById("chatText").addEventListener("keydown", function(event){
+		if (event.keyCode == 13)
+			sendMessage();
+		return false;
+	});
+	
+});
+
+
+function mouseMoveEvent(e){
+    if(focused===false)
+        return;
+    var x = e.pageX-offLeft;
+    var y = e.pageY-offTop;
+    focused.style.left=x+"px";
+    focused.style.top=y+"px";
+	socket.emit("movePiece", {id: focused.id.substring(1),
+	                          top:  focused.style.top,
+	                          left: focused.style.left});
+}
+function mouseDownEvent(e){
+    focused = e.target;
+    while(focused.parentNode.id != "container"){
+        focused = focused.parentNode;
+        if(!focused || focused.tagName == "BODY"){
+            focused = false;
+            return;
+        }
+    }
+    offLeft = e.pageX-focused.offsetLeft;
+    offTop = e.pageY-focused.offsetTop;
+    focused.style.zIndex=zIndex++;
+}
+function mouseUpEvent(e){
+	socket.emit("movePiece", {id: focused.id.substring(1),
+	                          top:  focused.style.top,
+	                          left: focused.style.left});
+    focused=false;
+}
+socket.on("movePiece", function(e){
+	var element = document.getElementById("p"+e.id);
+	if(element!=null){
+		element.style.top = e.top;
 		element.style.left = e.left;
 	}
 });
+socket.on("chatMessage", function(text){
+	text = text.replace(/[\u00A0-\u9999<>\&]/gim, function(i) {
+	  return '&#' + i.charCodeAt(0) + ';';
+	});
+	document.getElementById("chatMessages").innerHTML += "<div id='message'>>> " + text + "</div>";
+});
+
+
+function sendMessage(){
+	var inputText = document.getElementById("chatText");
+	if(inputText.value != "")
+		socket.emit("chatMessage", inputText.value);
+	inputText.value = "";
+}
 
 </script>
 
@@ -167,6 +312,7 @@ socket.on("movePiece", function(e){
 <div id="p30" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px 0;width:64px; height:64px; "></div>
 <div id="p31" style="background: url('http://ivancea.hol.es/resources/chessPieces389x129.png') -320px -64px;width:64px; height:64px; "></div>
 
+
 <table class="chess">
     <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
     <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
@@ -177,5 +323,13 @@ socket.on("movePiece", function(e){
     <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
     <tr> <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td> </tr>
 </table>
+<br /><br />
+
+<div id="chatContainer" class="nomove">
+	<div class="nomove" id="chatMessages"></div>
+	<input id="chatText" type="text" width="100%" />
+	<input type="button" value="Send" onclick="sendMessage()" />
+</div>
+
 </body>
 </html>
