@@ -7,7 +7,7 @@
 
 
 template<class Func_Param>
-class threadManager{
+class ThreadManager{
     std::vector<std::thread*> _th;
     std::vector< std::pair<std::mutex*, std::queue<Func_Param*>* > > _muq;
     bool _joinOnDelete;
@@ -45,7 +45,7 @@ class threadManager{
         return nullptr;
     }
 
-    static void threadManager_Main(bool& finish, void (*func)(Func_Param), std::mutex* m, std::queue<Func_Param*>* q){
+    static void ThreadManager_Main(bool& finish, void (*func)(Func_Param), std::mutex* m, std::queue<Func_Param*>* q){
         Func_Param* t=nullptr;
         while(!finish || (size_t)accessQueue(m,q,SIZE)>0){
             while(q->size()>0){
@@ -73,22 +73,22 @@ class threadManager{
     }
 
 public:
-    threadManager()=delete;
-    threadManager(const threadManager&)=delete;
+    ThreadManager()=delete;
+    ThreadManager(const ThreadManager&)=delete;
 
-    threadManager(void (*func)(Func_Param), size_t nThreads, bool joinOnDelete = true):_joinOnDelete(joinOnDelete),_finish(false){
+    ThreadManager(void (*func)(Func_Param), size_t nThreads, bool joinOnDelete = true):_joinOnDelete(joinOnDelete),_finish(false){
         if(nThreads==0 || func==nullptr) return;
         for(int i=0; i<nThreads; i++){
             std::mutex* m = new std::mutex();
             std::queue<Func_Param*>* q = new std::queue<Func_Param*>();
             _muq.push_back(std::pair<std::mutex*, std::queue<Func_Param*>* >(m, q));
-            std::thread* th = new std::thread(&threadManager_Main, std::ref(_finish), func, m, q);
+            std::thread* th = new std::thread(&ThreadManager_Main, std::ref(_finish), func, m, q);
             if(!joinOnDelete)
                 th->detach();
             _th.push_back(th);
         }
     }
-    ~threadManager(){
+    ~ThreadManager(){
         deleteAll();
     }
 
