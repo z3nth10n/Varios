@@ -1,35 +1,37 @@
-#ifndef HTTP_h
-#define HTTP_h
-#include "ivancea.h"
-#include "timers.h"
+#include <vector>
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
+#include <windows.h>
+
+#include "sockets.cpp"
+#include "timers.h"
+#include "strings.h"
 
 
 namespace http{
     class request{
     protected:
-        map<string,string> _fields;
+        std::map<std::string,std::string> _fields;
 
     private:
-        string _url;
+        std::string _url;
         bool _secure;//HTTPS
 
     public:
         request():_secure(0){}
         bool isValidUrl()const{return isValidUrl(_url);}
-        string getBaseUrl()const{
+        std::string getBaseUrl()const{
             for(int i=0; i<_url.size(); i++)
                 if(_url[i]=='/') return _url.substr(0,i);
             return _url;
         }
-        string getUrlDir()const{
+        std::string getUrlDir()const{
             for(int i=0; i<_url.size(); i++)
                 if(_url[i]=='/') return _url.substr(i,_url.size());
             return "/";
         }
-        string getUrl()const{return _url;}
-        void setUrl(string url){
+        std::string getUrl()const{return _url;}
+        void setUrl(std::string url){
             //url=tolower(url);
             if(url.substr(0,7)=="http://") url.erase(0,7);
             else if(url.substr(0,8)=="https://"){
@@ -40,15 +42,15 @@ namespace http{
         }
         bool isSecure(){return _secure;}
         void setSecure(bool secure){_secure = secure;}
-        const map<string,string>& getFields()const{return _fields;}
-        string getField(string field)const{
+        const std::map<std::string,std::string>& getFields()const{return _fields;}
+        std::string getField(std::string field)const{
             field = tolower(field);
             for(auto it:_fields)
                 if(it.first==field)
                     return it.second;
             return "";
         }
-        void setField(string field, string value){
+        void setField(std::string field, std::string value){
             if(field=="" || value=="") return;
             for(int i=0; i<field.size(); i++)
                 if(field[i]=='\r'||field[i]=='\n'||field[i]==':'){
@@ -64,7 +66,7 @@ namespace http{
         }
 
 
-        static bool isValidUrl(string url){
+        static bool isValidUrl(std::string url){
             if(!contains(url,".")) return false;
             for(int i=0; i<url.size(); i++)
                 if(url[i]=='.') break;
@@ -76,10 +78,10 @@ namespace http{
                 if(url[i]=='\n' || url[i]=='\r') return false;
             return true;
         }
-        virtual void parseHeader(string header){
+        virtual void parseHeader(std::string header){
             if(header.substr(header.size()-4,4)=="\r\n\r\n") header.erase(header.size()-4,4);
             else if(header.substr(header.size()-2,2)=="\r\n") header.erase(header.size()-2,2);
-            vector<string> v = split(header,"\r\n");
+            std::vector<std::string> v = split(header,"\r\n");
             int i=0;
             if(v.size()>=1)
                 if(contains(v[0],"HTTP/1.1",0)||contains(v[0],"POST ",0)||contains(v[0],"GET ",0))
@@ -96,8 +98,8 @@ namespace http{
             _url="";
             _fields.clear();
         }
-        virtual string toString()=0;
-        virtual string getHeader()=0;
+        virtual std::string toString()=0;
+        virtual std::string getHeader()=0;
 
     };
 
@@ -114,9 +116,9 @@ namespace http{
             setUrl(r.getUrl());
             _fields = r.getFields();
         }
-        virtual string getHeader(){
-            string temp;
-            temp += "GET "+getUrlDir()+(isSecure()?" HTTP/1.1":" HTTP/1.1")+"\r\n";
+        virtual std::string getHeader(){
+            std::string temp;
+            temp += "GET "+getUrlDir()+(isSecure()?" HTTP/1.1":" HTTP/1.1")+"\r\n"; // TODO: Fix
             for(auto it=_fields.begin(); it!=_fields.end(); it++)
                 temp+=it->first+':'+it->second+"\r\n";
             return temp;
@@ -128,7 +130,7 @@ namespace http{
     };
 
     class POSTRequest:public request{/*************************** POST ***************************/
-        map<string,string> _body;
+        std::map<std::string,std::string> _body;
 
         void makeRequest(){
             if(_fields["host"]=="")
@@ -140,13 +142,14 @@ namespace http{
         }
 
     public:
-        POSTRequest(string url){setUrl(url);}
+        POSTRequest(){}
+        POSTRequest(std::string url){setUrl(url);}
         POSTRequest(const POSTRequest& r){
             setUrl(r.getUrl());
             _fields = r.getFields();
             _body = r.getBodyFields();
         }
-        string getBody()const{
+        std::string getBody()const{
             string t;
             for(auto it = _body.begin(); it!=_body.end(); it++){
                 t+=it->first+(it->second==""?"":'='+it->second)+'&';
@@ -154,8 +157,8 @@ namespace http{
             if(t.size()>0) t.erase(t.size()-1,1);
             return t;
         }
-        const map<string,string>& getBodyFields()const{return _body;}
-        void setBodyField(string field, string value=""){
+        const std::map<std::string,std::string>& getBodyFields()const{return _body;}
+        void setBodyField(std::string field, std::string value=""){
             if(field=="") return;
             for(int i=0; i<field.size(); i++)
                 if(field[i]=='='||field[i]=='&'){
@@ -169,26 +172,69 @@ namespace http{
                 }
             _body[field]=value;
         }
-        string getBodyField(string field)const{
+        std::string getBodyField(std::string field)const{
             for(auto it:_fields)
                 if(it.first==field)
                     return it.second;
             return "";
         }
-        void parseBodyField(string fieldAndValue){
+        void parseBodyField(std::string fieldAndValue){
             for(int i=0; i<fieldAndValue.size(); i++)
                 if(fieldAndValue[i]=='='){
                     setBodyField(fieldAndValue.substr(0,i),fieldAndValue.substr(i+1,fieldAndValue.size()));
                 }
         }
-        virtual string getHeader(){
-            string temp;
+        virtual std::string getHeader(){
+            std::string temp;
             temp += "POST "+getUrlDir()+(isSecure()?" HTTP/1.1":" HTTP/1.1")+"\r\n";
             for(auto it=_fields.begin(); it!=_fields.end(); it++)
                 temp+=it->first+':'+it->second+"\r\n";
             return temp;
         }
-        virtual string toString(){
+        virtual std::string toString(){
+            makeRequest();
+            return getHeader()+"\r\n"+getBody();
+        }
+        virtual void clear(){
+            request::clear();
+            _body.clear();
+        }
+    };
+
+    class RawPOSTRequest:public request{/*************************** RAW POST ***************************/
+        std::string _body;
+
+        void makeRequest(){
+            if(_fields["host"]=="")
+                _fields["host"]=getBaseUrl();
+            if(_fields["content-type"]=="")
+                _fields["content-type"]="application/x-www-form-urlencoded";
+            //if(_fields["content-length"]=="" || !isNum(_fields["content-length"]) || parseString(_fields["content-length"])>getBody().size())
+                _fields["content-length"]=to_string(getBody().size());
+        }
+
+    public:
+        RawPOSTRequest(){}
+        RawPOSTRequest(std::string url){setUrl(url);}
+        RawPOSTRequest(const RawPOSTRequest& r){
+            setUrl(r.getUrl());
+            _fields = r.getFields();
+            _body = r.getBody();
+        }
+        const std::string& getBody() const{
+            return _body;
+        }
+        void setBody(std::string body){
+            _body = body;
+        }
+        virtual std::string getHeader(){
+            std::string temp;
+            temp += "POST "+getUrlDir()+(isSecure()?" HTTP/1.1":" HTTP/1.1")+"\r\n";
+            for(auto it=_fields.begin(); it!=_fields.end(); it++)
+                temp+=it->first+':'+it->second+"\r\n";
+            return temp;
+        }
+        virtual std::string toString(){
             makeRequest();
             return getHeader()+"\r\n"+getBody();
         }
@@ -200,7 +246,7 @@ namespace http{
 
     class response:public request{
         int _code;
-        string _body;
+        std::string _body;
     public:
         response():_code(0){}
         response(int code):_code(code){}
@@ -209,21 +255,21 @@ namespace http{
             _body = r.getBody();
             _fields = r.getFields();
         }
-        string getBody()const{return _body;}
+        std::string getBody()const{return _body;}
         void setBody(string body){_body=body;}
         int getCode()const{return _code;}
         void setCode(int code){_code=code;}
-        virtual string getHeader(){
-            string temp;
+        virtual std::string getHeader(){
+            std::string temp;
             temp+="HTTP/1.1 "+to_string(_code)+" "+getCodeReason(_code)+"\r\n";
             for(auto it=_fields.begin(); it!=_fields.end(); it++)
                 temp+=it->first+':'+it->second+"\r\n";
             return temp;
         }
-        virtual string toString(){
+        virtual std::string toString(){
             return getHeader()+"\r\n"+_body;
         }
-        virtual void parseHeader(string header){
+        virtual void parseHeader(std::string header){
             for(int i=0; i<header.size()&&header.substr(i,2)!="\r\n"; i++)
                 if(atoi(header.substr(i,3).c_str())>=100 && atoi(header.substr(i,3).c_str())<=999){
                     setCode(atoi(header.substr(i,3).c_str()));
@@ -231,7 +277,7 @@ namespace http{
                 }
             request::parseHeader(header);
         }
-        static string getCodeReason(int code){
+        static std::string getCodeReason(int code){
             switch(code){
                 case 100:return "Continue";
                 case 101:return "Switching Protocols";
@@ -268,6 +314,7 @@ namespace http{
                 case 415:return "Unsupported Media Type";
                 case 416:return "Resquested Range Not Satisfiable";
                 case 417:return "Expectation Failed";
+				case 451:return "Unavailable for legal reasons";
                 case 500:return "Internal Server Error";
                 case 501:return "Not Implemented";
                 case 502:return "Bad Gateway";
@@ -283,9 +330,7 @@ namespace http{
                 default:return "Error";
             }
         }
-        /*enum error{
-            INVALID_FILE=1
-        };*/
+
         virtual void clear(){
             request::clear();
             _code=0;
@@ -297,20 +342,20 @@ namespace http{
         if(!r.isValidUrl()) return response(-1);
         static bool is_SSL_set = false;
         response t;
-        string s, header, body;
+        std::string s, header, body;
         if(!r.isSecure()){
-            if(!r.isValidUrl()) return t;
-            client cl;
-            if(!cl.start(r.getBaseUrl(),80)) return t;
-            if(!cl.sendChars(r.toString())) return t;
+            if(!r.isValidUrl()) return response(6);
+            TCPClient cl;
+            if(!cl.connect(r.getBaseUrl(),80)) return response(7);
+            if(!cl.send(r.toString())) return response(8);
             thSleep(100);
-            for(int i=0; i<5; i++) if((s=cl.recvChars())!="") break; else if(i==4) return t; else thSleep(200);
+            for(int i=0; i<100; i++) if((s=cl.recv())!="") break; else if(i==99) return response(9); else thSleep(10);
 
             while(!contains(s,"\r\n\r\n")){
                 header+=s;
-                for(int i=0; i<5; i++) if((s=cl.recvChars())!="") break; else if(i==4) return t; else thSleep(200);
+                for(int i=0; i<100; i++) if((s=cl.recv())!="") break; else if(i==99) return response(10); else thSleep(10);
             }
-            vector<string> v = split(s,"\r\n\r\n",2);
+            std::vector<std::string> v = split(s,"\r\n\r\n",2);
             header+=v[0];
             t.parseHeader(header);
             if(v.size()==2) s=v[1];
@@ -318,10 +363,10 @@ namespace http{
             bool chunked=false;
             try{
                 t.getFields().at("content-length");
-            }catch(out_of_range e){
+            }catch(std::out_of_range e){
                 try{
                     chunked=t.getFields().at("transfer-encoding")=="chunked";
-                }catch(out_of_range e){}
+                }catch(std::out_of_range e){}
             }
             v.clear();
             if(chunked){
@@ -338,28 +383,30 @@ namespace http{
                             resto=0;
                         }
                     }else{
-                        hexdec h;
                         v=split(s,"\r\n",2);
                         if(v.size()==2) s = v[1];
                         else s="";
-                        if(!h.asignar(v[0])){
+                        int n = 0;
+                        try{
+                            n = stoi(v[0], nullptr, 16);
+                        }catch(std::invalid_argument exc){
                             t.setCode(0);
-                            return t;
+                            return response(11);
                         }
-                        int n = h.dec();
-                        if(n==0) break;
+                        if(n==0)
+                            break;
                         t.setBody(t.getBody()+s.substr(0,n));
                         if(s.size()<n) resto = n-s.size();
                         else s.erase(0,2);
                         s.erase(0,n);
                     }
-                    s+=cl.recvChars();
+                    s+=cl.recv();
                 }
             }else{
                 int contentLength=0;
                 try{
                     contentLength = atoi(t.getFields().at("content-length").c_str());
-                }catch(out_of_range e){return t;}
+                }catch(std::out_of_range e){return response(12);}
                 while(true){
                     if(contentLength==0) break;
                     t.setBody(t.getBody()+s.substr(0,contentLength));
@@ -367,7 +414,7 @@ namespace http{
                         contentLength-=s.size();
                         s.clear();
                     }else break;
-                    s+=cl.recvChars();
+                    s+=cl.recv();
                 }
             }
         }else{//HTTPS
@@ -422,7 +469,7 @@ namespace http{
                     else if(t.getCode()==0){
                         vector<string> v = split(buf,"\r\n\r\n",2);
                         t.parseHeader(header+v[0]);
-                        if(v.size()==2) t.setBody(t.getBody()+buf);
+                        if(v.size()==2) t.setBody(t.getBody()+v[1]);
                     }else{
                         t.setBody(t.getBody()+buf);
                     }
@@ -439,24 +486,24 @@ namespace http{
         if(!r.isValidUrl()) return response(-1);
         static bool is_SSL_set = false;
         response t;
-        string s, header, body;
-        ofstream f;
+        std::string s, header, body;
+        std::ofstream f;
         f.open(name,ios::trunc|ios::binary);
         if(f.fail()) return response(1);
 
         if(!r.isSecure()){
             if(!r.isValidUrl()) return t;
-            client cl;
-            if(!cl.start(r.getBaseUrl(),80)) return t;
-            if(!cl.sendChars(r.toString())) return t;
+            TCPClient cl;
+            if(!cl.connect(r.getBaseUrl(),80)) return t;
+            if(!cl.send(r.toString())) return t;
             thSleep(100);
-            for(int i=0; i<5; i++) if((s=cl.recvChars())!="") break; else if(i==4) return t; else thSleep(200);
+            for(int i=0; i<100; i++) if((s=cl.recv())!="") break; else if(i==99) return t; else thSleep(10);
 
             while(!contains(s,"\r\n\r\n")){
                 header+=s;
-                for(int i=0; i<5; i++) if((s=cl.recvChars())!="") break; else if(i==4) return t; else thSleep(200);
+                for(int i=0; i<100; i++) if((s=cl.recv())!="") break; else if(i==99) return t; else thSleep(10);
             }
-            vector<string> v = split(s,"\r\n\r\n",2);
+            std::vector<std::string> v = split(s,"\r\n\r\n",2);
             header+=v[0];
             if(v.size()==2) s=v[1];
             else s.clear();
@@ -476,10 +523,10 @@ namespace http{
             bool chunked=false;
             try{
                 t.getFields().at("content-length");
-            }catch(out_of_range e){
+            }catch(std::out_of_range e){
                 try{
                     chunked=t.getFields().at("transfer-encoding")=="chunked";
-                }catch(out_of_range e){}
+                }catch(std::out_of_range e){}
             }
             v.clear();
             int totalBytes=0;
@@ -498,15 +545,16 @@ namespace http{
                             resto=0;
                         }
                     }else{
-                        hexdec h;
                         v=split(s,"\r\n",2);
                         if(v.size()==2) s = v[1];
                         else s="";
-                        if(!h.asignar(v[0])){
+                        int n = 0;
+                        try{
+                            n = stoi(v[0], nullptr, 16);
+                        }catch(invalid_argument exc){
                             t.setCode(0);
-                            return t;
+                            return response(11);
                         }
-                        int n = h.dec();
                         if(n==0) break;
                         f << s.substr(0,n);
                         totalBytes+=s.substr(0,n).size();
@@ -514,7 +562,7 @@ namespace http{
                         else s.erase(0,2);
                         s.erase(0,n);
                     }
-                    s+=cl.recvChars();
+                    s+=cl.recv();
                 }
             }else{
                 int contentLength=0;
@@ -529,7 +577,7 @@ namespace http{
                         contentLength-=s.size();
                         s.clear();
                     }else break;
-                    s+=cl.recvChars();
+                    s+=cl.recv();
                 }
             }
             t.setBody("<Body fileName=\""+name+"\" size=\""+ to_string(totalBytes) +"\">");
