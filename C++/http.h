@@ -1,3 +1,6 @@
+#ifndef HTTP_H
+#define HTTP_H
+
 #include <vector>
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
